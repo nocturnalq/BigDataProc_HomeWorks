@@ -158,3 +158,4 @@ nocturnalq@1440:~/BigDataProc_HomeWorks/HomeWork_1$ dcompose down
  ⠿ Container homework_1-worker-2  Removed                                                                                                                                                                                                                                                             10.6s
  ⠿ Network homework_1_hd-network  Removed
 ```
+
