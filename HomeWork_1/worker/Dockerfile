@@ -1,5 +1,7 @@
 FROM hadoop-base-image
 
+LABEL maintainer="Leonid Filippov l.filippov2@edu.mirea.ru"
+
 USER root
 
 # Copy a public key

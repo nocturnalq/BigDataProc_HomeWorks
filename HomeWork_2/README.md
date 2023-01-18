@@ -1,37 +1,17 @@
 ## **<u>Домашнее задание 2.</u>**
 
-### Цель. Развертывание вычислительного кластера Apache Hadoop и выполнение MapReduce-приложения на менеджере ресурсов YARN.
-
-##### Задачи:
-
-1. Развертывание вычислительного кластера Apache Hadoop на базе `Docker`-контейнеров, включающих основные программные компоненты файловой системы Hadoop.
-2. Проверка работоспособности развернутого кластера и состояния его компонентов.
-3. Запуск и выполнение MapReduce-приложения на менеджере ресурсов развернутого кластера YARN.
-
-#### 1. Развертывание вычислительного кластера  Apache Hadoop.
-
-Выполнение [Домашнего задания 1](../HomeWork_1/) завершилось выполнением следующей команды по развертыванию master-node и 4 worker-nodes:
-
-`docker-compose up -d --scale worker=4`
-
-При успешном запуске в терминале должно появиться следующий вывод:
-
+## Проверка работы нод
 ```
-Creating network "hadoop_default" with the default driver
-Creating master          ... done
-Creating hadoop_worker_1 ... done
-Creating hadoop_worker_2 ... done
-Creating hadoop_worker_3 ... done
-Creating hadoop_worker_4 ... done
+nocturnalq@1440:~/BigDataProc_HomeWorks/HomeWork_1$ docker logs homework_1-worker-1
+Start SSH service
+ * Starting OpenBSD Secure Shell server sshd
+   ...done.
+Start Hadoop daemons
+WARNING: /home/bigdata/hadoop/logs does not exist. Creating.
+Start yarn's nodemanager
 ```
-
-#### 2. Проверка работоспособности развернутого кластера и состояния его компонентов.
-
-###### Обращение к соответствующим log-записям компонентов кластера должно завершится следующим:
-
-`docker container logs master`
-
 ```
+nocturnalq@1440:~/BigDataProc_HomeWorks/HomeWork_1$ docker logs master
 Start SSH service
  * Starting OpenBSD Secure Shell server sshd
    ...done.
@@ -40,136 +20,141 @@ Copy files to HDFS
 The entrypoint script is completed
 ```
 
-`docker container logs hadoop_worker_1`
-
+## Просмотр запущенных datanodes (запускал на двух нодах из-за ресурсов пк)
 ```
-Start SSH service
-Starting OpenBSD Secure Shell server: sshd.
-Start Hadoop daemons
-WARNING: /home/bigdata/hadoop/logs does not exist. Creating.
-```
-
-###### Проверка Hadoop daemons:
-
-Просмотр запущенных datanodes в `HDFS`: 
-
-`docker exec master bash hdfs dfsadmin -printTopology`
-
-```
+nocturnalq@1440:~/BigDataProc_HomeWorks/HomeWork_1$ docker exec master bash hdfs dfsadmin -printTopology
 Rack: /default-rack
-   172.20.0.3:9866 (hadoop_worker_4.hadoop_hd-network)
-   172.20.0.4:9866 (hadoop_worker_3.hadoop_hd-network)
-   172.20.0.5:9866 (hadoop_worker_2.hadoop_hd-network)
-   172.20.0.6:9866 (hadoop_worker_1.hadoop_hd-network)
+   172.18.0.3:9866 (homework_1-worker-2.homework_1_hd-network)
+   172.18.0.4:9866 (homework_1-worker-1.homework_1_hd-network)
 ```
 
-Просмотр `data` директории:
-
-`docker exec master bash hdfs dfs -ls /data`
-
-Вы должны увидеть содержимое папки в терминале (например):
-
+## Просмотр data директории
 ```
-Found 1 items
--rw-r--r--   3 bigdata supergroup      69053 2019-12-25 19:04 /data/samples.json
+nocturnalq@1440:~/BigDataProc_HomeWorks/HomeWork_1$ docker exec -it master hdfs dfs -ls /data
+Found 2 items
+-rw-r--r--   3 bigdata supergroup 1478965298 2023-01-18 22:23 /data/reviews_Electronics_5.json
+-rw-r--r--   3 bigdata supergroup      12106 2023-01-18 22:23 /data/samples.json
 ```
-
-Запустите Ваш Web-браузер и перейдите по адресу: `localhost:9870` для просмотра HDFS Web UI.
+## Просмотр Datanodes Tab
 
 <center>
 
-![ Datanodes Tab](./img/hd_docker_4.png "Datanodes Tab")
+![ Datanodes Tab](./img/datanodes_image.png "Datanodes Tab")
 
 <i>Figure 1. Таблица Datanodes </i></center>
 
-Теперь просмотрим все Nodemanagers на менеджере ресурсов `YARN`:
-
-`docker exec master bash yarn node --list`
-
-Перейдем по адресу `localhost:8088` , чтобы открыть YARN Web UI.
+## Просмотр Yarn Datanodes
 
 <center>
 
-![YARN: Nodes](./img/hd_docker_5.png "YARN: Nodes")
+![YARN: Nodes](./img/yarn_datanodes.png "YARN: Nodes")
 
 <i>Figure 2. YARN: Nodes</i></center>
 
-
-
-## Запуск MapReduce-приложения
-
-**Задание.** Выполните на выбор скрипт по запуску MapReduce-приложения (`.jar` java, `.py` или `.jar` scala), размещенного в `./app` , для данных из `./data` и запишите результат в `./data/output/` и в `hdfs`
-
-
+## Вывод после запуска скрипта 
 ```
-docker exec master bash \
-    Ваш код
+nocturnalq@1440:~/BigDataProc_HomeWorks/HomeWork_1$ docker exec master bash yarn jar /home/bigdata/hadoop/share/hadoop/tools/lib/hadoop-streaming-3.1.2.jar \
+                            -D mapreduce.job.reduces=2 \
+                            -file /home/bigdata/app/py/wordcountapp/tokenizer_mapper.py -mapper 'python tokenizer_mapper.py' \
+                            -file /home/bigdata/app/py/wordcountapp/intsum_reducer.py -reducer 'python intsum_reducer.py' \
+                            -input /data/samples.json \
+                            -output /data/output.txt
+2023-01-18 22:50:36,137 WARN streaming.StreamJob: -file option is deprecated, please use generic option -files instead.
+packageJobJar: [/home/bigdata/app/py/wordcountapp/tokenizer_mapper.py, /home/bigdata/app/py/wordcountapp/intsum_reducer.py, /tmp/hadoop-unjar543508325727115823/] [] /tmp/streamjob863351404288071415.jar tmpDir=null
+2023-01-18 22:50:37,045 INFO client.RMProxy: Connecting to ResourceManager at master/172.18.0.2:8032
+2023-01-18 22:50:37,262 INFO client.RMProxy: Connecting to ResourceManager at master/172.18.0.2:8032
+2023-01-18 22:50:37,507 INFO mapreduce.JobResourceUploader: Disabling Erasure Coding for path: /tmp/hadoop-yarn/staging/bigdata/.staging/job_1674082145536_0001
+2023-01-18 22:50:37,896 INFO mapred.FileInputFormat: Total input files to process : 1
+2023-01-18 22:50:38,043 INFO mapreduce.JobSubmitter: number of splits:2
+2023-01-18 22:50:38,231 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1674082145536_0001
+2023-01-18 22:50:38,233 INFO mapreduce.JobSubmitter: Executing with tokens: []
+2023-01-18 22:50:38,445 INFO conf.Configuration: resource-types.xml not found
+2023-01-18 22:50:38,446 INFO resource.ResourceUtils: Unable to find 'resource-types.xml'.
+2023-01-18 22:50:38,909 INFO impl.YarnClientImpl: Submitted application application_1674082145536_0001
+2023-01-18 22:50:38,948 INFO mapreduce.Job: The url to track the job: http://master:8088/proxy/application_1674082145536_0001/
+2023-01-18 22:50:38,950 INFO mapreduce.Job: Running job: job_1674082145536_0001
+2023-01-18 22:50:46,039 INFO mapreduce.Job: Job job_1674082145536_0001 running in uber mode : false
+2023-01-18 22:50:46,040 INFO mapreduce.Job:  map 0% reduce 0%
+2023-01-18 22:50:52,105 INFO mapreduce.Job:  map 100% reduce 0%
+2023-01-18 22:50:56,132 INFO mapreduce.Job:  map 100% reduce 100%
+2023-01-18 22:50:56,145 INFO mapreduce.Job: Job job_1674082145536_0001 completed successfully
+2023-01-18 22:50:56,240 INFO mapreduce.Job: Counters: 53
+        File System Counters
+                FILE: Number of bytes read=20822
+                FILE: Number of bytes written=920066
+                FILE: Number of read operations=0
+                FILE: Number of large read operations=0
+                FILE: Number of write operations=0
+                HDFS: Number of bytes read=16378
+                HDFS: Number of bytes written=7770
+                HDFS: Number of read operations=16
+                HDFS: Number of large read operations=0
+                HDFS: Number of write operations=4
+        Job Counters 
+                Launched map tasks=2
+                Launched reduce tasks=2
+                Data-local map tasks=2
+                Total time spent by all maps in occupied slots (ms)=6642
+                Total time spent by all reduces in occupied slots (ms)=4259
+                Total time spent by all map tasks (ms)=6642
+                Total time spent by all reduce tasks (ms)=4259
+                Total vcore-milliseconds taken by all map tasks=6642
+                Total vcore-milliseconds taken by all reduce tasks=4259
+                Total megabyte-milliseconds taken by all map tasks=3400704
+                Total megabyte-milliseconds taken by all reduce tasks=2180608
+        Map-Reduce Framework
+                Map input records=5
+                Map output records=2193
+                Map output bytes=16424
+                Map output materialized bytes=20834
+                Input split bytes=176
+                Combine input records=0
+                Combine output records=0
+                Reduce input groups=869
+                Reduce shuffle bytes=20834
+                Reduce input records=2193
+                Reduce output records=869
+                Spilled Records=4386
+                Shuffled Maps =4
+                Failed Shuffles=0
+                Merged Map outputs=4
+                GC time elapsed (ms)=205
+                CPU time spent (ms)=2660
+                Physical memory (bytes) snapshot=1018765312
+                Virtual memory (bytes) snapshot=8654884864
+                Total committed heap usage (bytes)=871366656
+                Peak Map Physical memory (bytes)=302440448
+                Peak Map Virtual memory (bytes)=2162462720
+                Peak Reduce Physical memory (bytes)=207593472
+                Peak Reduce Virtual memory (bytes)=2165080064
+        Shuffle Errors
+                BAD_ID=0
+                CONNECTION=0
+                IO_ERROR=0
+                WRONG_LENGTH=0
+                WRONG_MAP=0
+                WRONG_REDUCE=0
+        File Input Format Counters 
+                Bytes Read=16202
+        File Output Format Counters 
+                Bytes Written=7770
+2023-01-18 22:50:56,241 INFO streaming.StreamJob: Output directory: /data/output.txt
 ```
 
-Проверьте список приложений, выполняемых на YARN-кластере:
-
-`docker exec master bash yarn app -list`
-
-Проверьте список приложений, выполняемых на YARN-кластере:
-
-`docker exec master bash yarn app -status appId`
-
-Аналогичные действия Вы можете выполнить при помощи YARN Web UI.
+## Результат выполнения в Hadoop UI
 
 <center>
 
-![Applications](./img/hd_docker_mr_1.png "Applications")
+![HADOOP: App](./img/hadoop.png "HADOOP: App")
 
-<i>Figure 3. Applications</i></center>
+<i>Figure 3. HADOOP: App</i></center>
 
-
-<center>
-
-![YARN queues](./img/hd_docker_mr_2.png "YARN queues")
-
-<i>Figure 4. YARN queues</i></center>
-
-
-<center>
-
-![MapReduce Job](./img/hd_docker_mr_3.png "MapReduce Job")
-
-<i>Figure 5. MapReduce Job</i></center>
-
-**Результат выполнения** <u>**Домашней работы № 2**</u>
-
-Выполните команду в master-node кластера по просмотру содержимого `hdfs`  содержимого каждого файла результата. Результат представьте в виде кода команд и снимков экрана с результатом выполнения команд в терминале и с помощью Hadoop Web UI.
-
-
-
-После выполнения остановите контейнеры:
-
-`docker-compose stop`
-
+## Остановка docker compose
 ```
-Stopping hadoop_worker_2 ... done
-Stopping hadoop_worker_4 ... done
-Stopping hadoop_worker_1 ... done
-Stopping hadoop_worker_3 ... done
-Stopping master          ... done
+nocturnalq@1440:~/BigDataProc_HomeWorks/HomeWork_1$ dcompose down
+[+] Running 4/4
+ ⠿ Container master               Removed                                                                                                                                                                                                                                                             10.6s
+ ⠿ Container homework_1-worker-1  Removed                                                                                                                                                                                                                                                             10.6s
+ ⠿ Container homework_1-worker-2  Removed                                                                                                                                                                                                                                                             10.6s
+ ⠿ Network homework_1_hd-network  Removed
 ```
-
-Остановите (если запущены) и удалите Ваши контейнеры и сеть
-
-`docker-compose down`
-
-```
-Stopping hadoop_worker_1 ... done
-Stopping hadoop_worker_4 ... done
-Stopping hadoop_worker_3 ... done
-Stopping hadoop_worker_2 ... done
-Stopping master          ... done
-Removing hadoop_worker_1 ... done
-Removing hadoop_worker_4 ... done
-Removing hadoop_worker_3 ... done
-Removing hadoop_worker_2 ... done
-Removing master          ... done
-Removing network hadoop_default
-```
-
-При удалении контейнеров все данные в HDFS будут потеряны.
